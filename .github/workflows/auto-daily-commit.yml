@@ -1,32 +1,43 @@
-name: Daily Auto Commit
+name: Daily Auto Rotate
 
 on:
   schedule:
-    - cron: '0 5 * * *'   # Runs every day at 5 AM IST
+    - cron: "0 0 * * *"   # Runs every day at 5:30 AM IST (00:00 UTC)
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  auto-commit:
+  rotate-topic:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Update file
+      - name: Read topic list
+        id: topic
         run: |
-          echo "Last update: $(date)" > auto-update.txt
+          mapfile -t lines < topics.txt
+          count=${#lines[@]}
+          index=$(( $(date +%j) % count ))
+          echo "topic=${lines[$index]}" >> $GITHUB_OUTPUT
+
+      - name: Update auto-update.txt
+        run: |
+          echo "📅 Daily Data Analyst Practice" > auto-update.txt
+          echo "----------------------------------------" >> auto-update.txt
+          echo "" >> auto-update.txt
+          echo "🔄 Today's Topic:" >> auto-update.txt
+          echo "${{ steps.topic.outputs.topic }}" >> auto-update.txt
+          echo "" >> auto-update.txt
+          echo "✔ Auto-updated on: $(date)" >> auto-update.txt
 
       - name: Commit changes
         run: |
           git config --local user.email "github-actions@github.com"
           git config --local user.name "GitHub Actions"
-          git add .
-          git commit -m "Auto update: $(date)" || echo "No changes to commit"
-
-      - name: Push changes
-        run: |
+          git add auto-update.txt
+          git commit -m "Auto Rotate Topic: ${{ steps.topic.outputs.topic }}" || echo "No changes to commit"
           git push
